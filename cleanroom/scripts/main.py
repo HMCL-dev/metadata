@@ -37,7 +37,8 @@ def save_index(releases):
 def download_files(releases):
     # 创建 files 目录
     current_dir = Path(__file__).parent
-    files_dir = current_dir / "files"
+    parent_dir = current_dir.parent
+    files_dir = parent_dir / "files"
     files_dir.mkdir(exist_ok=True)
     
     for release in releases:
