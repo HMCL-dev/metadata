@@ -10,30 +10,24 @@ on:
       - '**.py'
 
 permissions:
-  contents: write # 为 GITHUB_TOKEN 设置对代码库内容的写权限
+  contents: write
 
 jobs:
   update_forge-metadata:
     runs-on: ubuntu-latest
     steps:
-
-      - uses: actions/checkout@main
-
+      - uses: actions/checkout@6
       - name: Set time
         shell: bash
-        run: |
-          sudo timedatectl set-timezone 'Asia/Shanghai'
-
+        run: sudo timedatectl set-timezone 'Asia/Shanghai'
       - name: Set up Python
-        uses: actions/setup-python@main 
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
-
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install xmljson requests python-dateutil
-
       - name: Fetch forge-metadata changes
         id: fetch_forge_changes
         shell: bash
@@ -45,7 +39,6 @@ jobs:
           python3 gettime.py
           mv index.json ../
           cd ../..
-
       - name: Fetch cleanroom-metadata changes
         id: fetch_cleanroom_changes
         shell: bash
@@ -58,7 +51,6 @@ jobs:
           cd ../..
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Fetch optifine-metadata changes
         id: fetch_optifine_changes
         shell: bash
@@ -68,29 +60,21 @@ jobs:
           python3 converter.py
           mv index.json ../
           cd ../..
-
-      - name: Save changes
-        id: save_changes
+      - name: Commit changes
         shell: bash
         run: |
           git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff-index --quiet HEAD; then
-            # No changes
-            echo 'changed=false' >> $GITHUB_OUTPUT
-          else
-            # Changes detected
-            echo 'changed=true' >> $GITHUB_OUTPUT
-            git commit -m "Update metadata (`date '+%Y-%m-%d %H:%M:%S'` +0800)
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          GitHub Action: https://github.com/${{ github.repository }}/actions/runs/$GITHUB_RUN_ID
-            "
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes detected, skip commit and push."
+            exit 0
           fi
 
-      - name: Push changes
-        if: steps.save_changes.outputs.changed == 'true'
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
+          git commit -m "Update metadata (`date '+%Y-%m-%d %H:%M:%S'` +0800)
+
+          GitHub Action: https://github.com/${{ github.repository }}/actions/runs/$GITHUB_RUN_ID
+          "
+          git push origin
