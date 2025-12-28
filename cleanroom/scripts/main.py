@@ -4,7 +4,7 @@ import requests
 from pathlib import Path
 
 def get_releases():
-    url = "https://api.github.com/repos/CleanroomMC/Cleanroom/releases"
+    url = "https://api.github.com/repos/CleanroomMC/Cleanroom/releases?per_page=100"
     headers = {}
     
     # 检查 GH_TOKEN 环境变量
