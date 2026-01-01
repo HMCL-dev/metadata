@@ -60,6 +60,7 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "No changes detected, skip commit and push."
+            echo "SKIP=true" >> $GITHUB_ENV
             exit 0
           fi
 
@@ -69,6 +70,7 @@ jobs:
           "
           git push origin
       - name: Build Pages
+        if: ${{ env.SKIP != 'true' }}
         run: |
           mkdir -p /home/runner/gh-pages/{cleanroom,forge,optifine}
           mv ./cleanroom/index.json /home/runner/gh-pages/cleanroom/
@@ -77,11 +79,13 @@ jobs:
           mv ./forge/index.json /home/runner/gh-pages/forge/
           mv ./optifine/index.json /home/runner/gh-pages/optifine/
       - name: Upload Pages
+        if: ${{ env.SKIP != 'true' }}
         uses: actions/upload-pages-artifact@v4
         with:
           name: github-pages
           path: /home/runner/gh-pages
       - name: Deploy Pages
+        if: ${{ env.SKIP != 'true' }}
         id: deployment
         uses: actions/deploy-pages@v4
         with:
