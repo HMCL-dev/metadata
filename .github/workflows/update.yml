@@ -10,15 +10,19 @@ on:
       - '**.py'
 
 permissions:
+  pages: write
   contents: write
+  id-token: write
 
 jobs:
-  update_forge-metadata:
+  update-metadata:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
       - name: Set time
-        shell: bash
         run: sudo timedatectl set-timezone 'Asia/Shanghai'
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -29,8 +33,6 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install xmljson requests python-dateutil
       - name: Fetch forge-metadata changes
-        id: fetch_forge_changes
-        shell: bash
         run: |
           cd ./forge/scripts
           python3 xml_to_json.py
@@ -38,28 +40,20 @@ jobs:
           python3 install.py
           python3 gettime.py
           mv index.json ../
-          cd ../..
       - name: Fetch cleanroom-metadata changes
-        id: fetch_cleanroom_changes
-        shell: bash
         run: |
           cd ./cleanroom/scripts
           python3 main.py
           mv index.json ../
-          cd ../..
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Fetch optifine-metadata changes
-        id: fetch_optifine_changes
-        shell: bash
         run: |
           cd ./optifine/scripts
           python3 main.py
           python3 converter.py
           mv index.json ../
-          cd ../..
       - name: Commit changes
-        shell: bash
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -68,6 +62,7 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "No changes detected, skip commit and push."
+            echo "SKIP=true" >> $GITHUB_ENV
             exit 0
           fi
 
@@ -76,3 +71,24 @@ jobs:
           GitHub Action: https://github.com/${{ github.repository }}/actions/runs/$GITHUB_RUN_ID
           "
           git push origin
+      - name: Build Pages
+        if: ${{ env.SKIP != 'true' }}
+        run: |
+          mkdir -p /home/runner/gh-pages/{cleanroom,forge,optifine}
+          mv ./cleanroom/index.json /home/runner/gh-pages/cleanroom/
+          mv ./cleanroom/files /home/runner/gh-pages/cleanroom/
+          mv ./fmllibs /home/runner/gh-pages/
+          mv ./forge/index.json /home/runner/gh-pages/forge/
+          mv ./optifine/index.json /home/runner/gh-pages/optifine/
+      - name: Upload Pages
+        if: ${{ env.SKIP != 'true' }}
+        uses: actions/upload-pages-artifact@v4
+        with:
+          name: github-pages
+          path: /home/runner/gh-pages
+      - name: Deploy Pages
+        if: ${{ env.SKIP != 'true' }}
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages
