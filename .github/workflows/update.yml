@@ -5,7 +5,7 @@ on:
   schedule:
     - cron: '* */12 * * *' # 每12个小时运行一次
   push:
-    paths: 
+    paths:
       - '.github/workflows/update.yml'
       - '**.py'
 
@@ -21,38 +21,48 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
+
       - name: Set time
         run: sudo timedatectl set-timezone 'Asia/Shanghai'
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.x'
+
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-xmljson-requests-python-dateutil
+
       - name: Install dependencies
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install xmljson requests python-dateutil
+        run: python3 -m pip install -U pip xmljson requests python-dateutil
+
       - name: Fetch forge-metadata changes
+        working-directory: ./forge/scripts
         run: |
-          cd ./forge/scripts
           python3 xml_to_json.py
           python3 main.py
           python3 install.py
           python3 gettime.py
           mv index.json ../
+
       - name: Fetch cleanroom-metadata changes
+        working-directory: ./cleanroom/scripts
         run: |
-          cd ./cleanroom/scripts
           python3 main.py
           mv index.json ../
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Fetch optifine-metadata changes
+        working-directory: ./optifine/scripts
         run: |
-          cd ./optifine/scripts
           python3 main.py
           python3 converter.py
           mv index.json ../
+
       - name: Commit changes
         run: |
           git config --local user.name "github-actions[bot]"
@@ -74,18 +84,20 @@ jobs:
       - name: Build Pages
         if: ${{ env.SKIP != 'true' }}
         run: |
-          mkdir -p /home/runner/gh-pages/{cleanroom,forge,optifine}
-          mv ./cleanroom/index.json /home/runner/gh-pages/cleanroom/
-          mv ./cleanroom/files /home/runner/gh-pages/cleanroom/
-          mv ./fmllibs /home/runner/gh-pages/
-          mv ./forge/index.json /home/runner/gh-pages/forge/
-          mv ./optifine/index.json /home/runner/gh-pages/optifine/
+          mkdir -p "$RUNNER_TEMP/gh-pages"/{cleanroom,forge,optifine}
+          mv ./cleanroom/index.json "$RUNNER_TEMP/gh-pages/cleanroom/"
+          mv ./cleanroom/files "$RUNNER_TEMP/gh-pages/cleanroom/"
+          mv ./fmllibs "$RUNNER_TEMP/gh-pages/"
+          mv ./forge/index.json "$RUNNER_TEMP/gh-pages/forge/"
+          mv ./optifine/index.json "$RUNNER_TEMP/gh-pages/optifine/"
+
       - name: Upload Pages
         if: ${{ env.SKIP != 'true' }}
         uses: actions/upload-pages-artifact@v4
         with:
           name: github-pages
-          path: /home/runner/gh-pages
+          path: ${{ runner.temp }}/gh-pages
+
       - name: Deploy Pages
         if: ${{ env.SKIP != 'true' }}
         id: deployment
